@@ -34,6 +34,7 @@ func GetTimes() (string, string) {
 func CreateResourceLabels(resourceID string) map[string]string {
 	labels := make(map[string]string)
 	labels["resource_group"] = strings.Split(resourceID, "/")[4]
+	labels["resource_type"] = strings.Split(resourceID, "/")[6]
 	labels["resource_name"] = strings.Split(resourceID, "/")[8]
 	return labels
 }
