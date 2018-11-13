@@ -33,7 +33,8 @@ func getRequestID() string {
 	if requestID == "" {
 		newRequestID, err := exec.Command("uuidgen").Output()
 		if err != nil {
-			log.Fatal(err)
+			log.Printf("Error in generate uuid: %v", err)
+
 		}
 
 		requestID = string(newRequestID)
@@ -82,7 +83,6 @@ func getHost(date string) string {
 }
 
 func logger(level, message string, args interface{}) {
-
 	now := time.Now().UTC()
 	index := elkIndex{
 		Timestamp: now.Format(time.RFC3339),
@@ -96,12 +96,14 @@ func logger(level, message string, args interface{}) {
 
 	bytesRepresentation, err := json.Marshal(index)
 	if err != nil {
-		log.Fatalln(err)
+		log.Printf("Error in marshall index to elasticsearch: %v", err)
+		return
 	}
 
 	resp, err := http.Post(getHost(now.Format("2006-01-02")), "application/json", bytes.NewBuffer(bytesRepresentation))
 	if err != nil {
-		log.Fatalln(err)
+		log.Printf("Error in post request to elasticsearch: %v", err)
+		return
 	}
 
 	var result map[string]interface{}
