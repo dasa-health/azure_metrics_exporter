@@ -3,3 +3,5 @@
 azure_metrics_exporter
 azure.yml
 notes.txt
+.env
+.vscode

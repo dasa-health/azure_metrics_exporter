@@ -1,37 +1,35 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"regexp"
-	"strings"
+	"runtime/debug"
 
-	"github.com/RobustPerception/azure_metrics_exporter/config"
+	"github.com/dasa-health/azure_metrics_exporter/azure"
+	"github.com/dasa-health/azure_metrics_exporter/logger"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
+	"github.com/subosito/gotenv"
 
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
 
 var (
-	sc = &config.SafeConfig{
-		C: &config.Config{},
-	}
-	ac                    = NewAzureClient()
-	configFile            = kingpin.Flag("config.file", "Azure exporter configuration file.").Default("azure.yml").String()
-	listenAddress         = kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(":9276").String()
-	listMetricDefinitions = kingpin.Flag("list.definitions", "List available metric definitions for the given resources and exit.").Bool()
-	invalidMetricChars    = regexp.MustCompile("[^a-zA-Z0-9_:]")
+	listenAddress = kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(":9276").String()
 )
 
 func init() {
 	prometheus.MustRegister(version.NewCollector("azure_exporter"))
+	gotenv.Load()
 }
 
 // Collector generic collector type
-type Collector struct{}
+type Collector struct {
+	tagValue string
+}
 
 // Describe implemented with dummy data to satisfy interface.
 func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
@@ -40,63 +38,95 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect - collect results from Azure Montior API and create Prometheus metrics.
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
-	// Get metric values for all defined metrics
-	for _, target := range sc.C.Targets {
-		metrics := []string{}
-		for _, metric := range target.Metrics {
-			metrics = append(metrics, metric.Name)
+	resourceAggregation := os.Getenv("metric_aggregation")
+
+	if c.tagValue == "" {
+		logger.Error("Tag value is empty", nil)
+	}
+
+	logger.Info("Get all resources", nil)
+
+	ac, err := azure.GetAccessToken()
+
+	if err != nil {
+		logger.Error("Failed to get access token: %v", err)
+	}
+	resources, err := ac.GetResources(c.tagValue)
+
+	if err != nil {
+		logger.Error("Failed to get all resources: %v", err)
+	}
+
+	for _, resource := range resources.Value {
+
+		if !azure.ValidateTypeMetric(resource.Type) {
+			continue
 		}
-		metricsStr := strings.Join(metrics, ",")
-		metricValueData, err := ac.getMetricValue(metricsStr, target)
+
+		logger.Info(fmt.Sprintf("Retrieves all metric definitions of resource [ %s ]", resource.Name), nil)
+
+		typeMetrics, err := ac.GetMetricTypes(resource.ID, resource.Type)
+
 		if err != nil {
-			log.Printf("Failed to get metrics for target %s: %v", target.Resource, err)
-			continue
+			log.Printf("Failed to get metrics types from resources %s: %v", resource.Name, err)
 		}
 
-		if metricValueData.Value == nil {
-			log.Printf("Metric %v not found at target %v\n", metricsStr, target.Resource)
-			continue
-		}
-		if len(metricValueData.Value[0].Timeseries[0].Data) == 0 {
-			log.Printf("No metric data returned for metric %v at target %v\n", metricsStr, target.Resource)
-			continue
-		}
+		log.Printf("Treats metric definitions found from resource [ %s ]", resource.Name)
 
-		for _, value := range metricValueData.Value {
-			// Ensure Azure metric names conform to Prometheus metric name conventions
-			metricName := strings.Replace(value.Name.Value, " ", "_", -1)
-			metricName = strings.ToLower(metricName + "_" + value.Unit)
-			metricName = strings.Replace(metricName, "/", "_per_", -1)
-			metricName = invalidMetricChars.ReplaceAllString(metricName, "_")
-			metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
-			labels := CreateResourceLabels(value.ID)
+		typeMetricsTreated := azure.TreatTypeMetric(typeMetrics)
 
-			if hasAggregation(target, "Total") {
+		for _, typeMetric := range typeMetricsTreated {
+
+			metricValueData, err := ac.GetMetric(resource.ID, typeMetric, resourceAggregation)
+
+			if err != nil {
+				log.Printf("Failed to get metrics for target %s: %v", resource.ID, err)
+				continue
+			}
+
+			if metricValueData.Value == nil {
+				log.Printf("Metric %v not found at target %v\n", typeMetric, resource.ID)
+				continue
+			}
+			if len(metricValueData.Value) <= 0 || len(metricValueData.Value[0].Timeseries) <= 0 || len(metricValueData.Value[0].Timeseries[0].Data) == 0 {
+				log.Printf("No metric data returned for metric %v at target %v\n", typeMetric, resource.ID)
+				continue
+			}
+			for _, value := range metricValueData.Value {
+
+				metricName, err := SanitizeMetricName(value.Name.Value, value.Unit)
+
+				if err != nil {
+					log.Printf("Failed to get metrics types from resources %s: %v", resource.Name, err)
+				}
+				defer recoverMetric(resource.Name, value.Name.Value)
+
+				if len(value.Timeseries) <= 0 || len(value.Timeseries[0].Data) <= 0 {
+					continue
+				}
+
+				metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
+
+				labels := CreateResourceLabels(value.ID, IdentifyEnvironmentResource(resource.Name))
+
 				ch <- prometheus.MustNewConstMetric(
 					prometheus.NewDesc(metricName+"_total", metricName+"_total", nil, labels),
 					prometheus.GaugeValue,
 					metricValue.Total,
 				)
-			}
 
-			if hasAggregation(target, "Average") {
 				ch <- prometheus.MustNewConstMetric(
 					prometheus.NewDesc(metricName+"_average", metricName+"_average", nil, labels),
 					prometheus.GaugeValue,
 					metricValue.Average,
 				)
-			}
-
-			if hasAggregation(target, "Minimum") {
 
 				ch <- prometheus.MustNewConstMetric(
 					prometheus.NewDesc(metricName+"_min", metricName+"_min", nil, labels),
 					prometheus.GaugeValue,
 					metricValue.Minimum,
 				)
-			}
 
-			if hasAggregation(target, "Maximum") {
 				ch <- prometheus.MustNewConstMetric(
 					prometheus.NewDesc(metricName+"_max", metricName+"_max", nil, labels),
 					prometheus.GaugeValue,
@@ -105,11 +135,21 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			}
 		}
 	}
+
+	logger.Info("Finally Get all resources", nil)
+
+}
+
+func recoverMetric(resource, metric string) {
+	if r := recover(); r != nil {
+		log.Printf("Recovered error from metric %s from resource %s : %v", metric, resource, r)
+		debug.PrintStack()
+	}
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	registry := prometheus.NewRegistry()
-	collector := &Collector{}
+	collector := &Collector{tagValue: r.URL.Query().Get("tagValue")}
 	registry.MustRegister(collector)
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
 	h.ServeHTTP(w, r)
@@ -118,31 +158,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
-	if err := sc.ReloadConfig(*configFile); err != nil {
-		log.Fatalf("Error loading config: %v", err)
-		os.Exit(1)
-	}
-
-	err := ac.getAccessToken()
-	if err != nil {
-		log.Fatalf("Failed to get token: %v", err)
-	}
-
-	// Print list of available metric definitions for each resource to console if specified.
-	if *listMetricDefinitions {
-		results, err := ac.getMetricDefinitions()
-		if err != nil {
-			log.Fatalf("Failed to fetch metric definitions: %v", err)
-		}
-
-		for k, v := range results {
-			log.Printf("Resource: %s\n\nAvailable Metrics:\n", strings.Split(k, "/")[6])
-			for _, r := range v.MetricDefinitionResponses {
-				log.Printf("- %s\n", r.Name.Value)
-			}
-		}
-		os.Exit(0)
-	}
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
