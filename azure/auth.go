@@ -8,6 +8,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/dasa-health/azure_metrics_exporter/logger"
 )
 
 // GetAccessToken autentica o exporter na azure
@@ -27,26 +29,31 @@ func GetAccessToken() (Client, error) {
 	}
 	resp, err := ac.client.PostForm(target, form)
 	if err != nil {
+		logger.Error(fmt.Sprintf("[GetAccessToken] - Error in GET %s", target), err)
 		return Client{}, fmt.Errorf("Error authenticating against Azure API: %v", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
+		logger.Error(fmt.Sprintf("[GetAccessToken] - Error in GET %s", target), resp.StatusCode)
 		return Client{}, fmt.Errorf("Did not get status code 200, got: %d", resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
+		logger.Error(fmt.Sprintf("[GetAccessToken] - Error in GET %s", target), err)
 		return Client{}, fmt.Errorf("Error reading body of response: %v", err)
 	}
 	var data map[string]interface{}
 	err = json.Unmarshal(body, &data)
 	if err != nil {
+		logger.Error(fmt.Sprintf("[GetAccessToken] - Error in GET %s", target), err)
 		return Client{}, fmt.Errorf("Error unmarshalling response body: %v", err)
 	}
 	ac.accessToken = data["access_token"].(string)
 	ac.resource = data["resource"].(string)
 	expiresOn, err := strconv.ParseInt(data["expires_on"].(string), 10, 64)
 	if err != nil {
+		logger.Error(fmt.Sprintf("[GetAccessToken] - Error in GET %s", target), err)
 		return Client{}, fmt.Errorf("Error ParseInt of expires_on failed: %v", err)
 	}
 	ac.accessTokenExpiresOn = time.Unix(expiresOn, 0).UTC()

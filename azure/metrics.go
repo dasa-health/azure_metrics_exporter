@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/dasa-health/azure_metrics_exporter/logger"
 )
 
 // GetMetricTypes Loop through all specified resource targets and get their respective metric definitions.
@@ -15,6 +17,7 @@ func (ac *Client) GetMetricTypes(resourceName, resourceType string) (MetricDefin
 	err := ac.validateAccesssToken()
 
 	if err != nil {
+		logger.Error("[GetMetricTypes] - Error in validation access token", err)
 		return MetricDefinitionResponse{}, fmt.Errorf("Error refreshing access token: %v", err)
 	}
 
@@ -31,24 +34,27 @@ func (ac *Client) GetMetricTypes(resourceName, resourceType string) (MetricDefin
 
 	req.URL.RawQuery = values.Encode()
 
-	//log.Printf("GET %s", req.URL)
 	resp, err := ac.client.Do(req)
 	if err != nil {
+		logger.Error(fmt.Sprintf("[GetMetricTypes] - Error in GET %s", req.URL), err)
 		return MetricDefinitionResponse{}, fmt.Errorf("Error: %v", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
+		logger.Error(fmt.Sprintf("[GetMetricTypes] - Error in GET %s", req.URL), resp.StatusCode)
 		return MetricDefinitionResponse{}, fmt.Errorf("Unable to query metrics API with status code: %d", resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
+		logger.Error(fmt.Sprintf("[GetMetricTypes] - Error in GET %s", req.URL), err)
 		return MetricDefinitionResponse{}, fmt.Errorf("Error reading body of response: %v", err)
 	}
 
 	var data MetricDefinitionResponse
 	err = json.Unmarshal(body, &data)
 	if err != nil {
+		logger.Error(fmt.Sprintf("[GetMetricTypes] - Error in GET %s", req.URL), err)
 		return MetricDefinitionResponse{}, fmt.Errorf("Error unmarshalling response body: %v", err)
 	}
 
@@ -61,6 +67,7 @@ func (ac *Client) GetMetric(resource, metricNames, aggregation string) (MetricVa
 	err := ac.validateAccesssToken()
 
 	if err != nil {
+		logger.Error("[GetMetric] - Error in validation access token", err)
 		return MetricValueResponse{}, fmt.Errorf("Error refreshing access token: %v", err)
 	}
 
@@ -72,6 +79,7 @@ func (ac *Client) GetMetric(resource, metricNames, aggregation string) (MetricVa
 
 	req, err := http.NewRequest("GET", metricValueEndpoint, nil)
 	if err != nil {
+		logger.Error(fmt.Sprintf("[GetMetric] - Error in GET %s", req.URL), req)
 		return MetricValueResponse{}, fmt.Errorf("Error creating HTTP request: %v", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+ac.accessToken)
@@ -89,21 +97,25 @@ func (ac *Client) GetMetric(resource, metricNames, aggregation string) (MetricVa
 
 	resp, err := ac.client.Do(req)
 	if err != nil {
+		logger.Error(fmt.Sprintf("[GetMetric] - Error in GET %s", req.URL), err)
 		return MetricValueResponse{}, fmt.Errorf("Error: %v", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
+		logger.Error(fmt.Sprintf("[GetMetric] - Error in GET %s", req.URL), resp.StatusCode)
 		return MetricValueResponse{}, fmt.Errorf("Unable to query metrics API with status code: %d", resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
+		logger.Error(fmt.Sprintf("[GetMetric] - Error in GET %s", req.URL), err)
 		return MetricValueResponse{}, fmt.Errorf("Error reading body of response: %v", err)
 	}
 
 	var data MetricValueResponse
 	err = json.Unmarshal(body, &data)
 	if err != nil {
+		logger.Error(fmt.Sprintf("[GetMetric] - Error in GET %s", req.URL), err)
 		return MetricValueResponse{}, fmt.Errorf("Error unmarshalling response body: %v", err)
 	}
 
