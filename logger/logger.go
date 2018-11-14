@@ -29,6 +29,17 @@ type elkIndex struct {
 var requestID = ""
 var elkBase = elk{}
 
+var activeLogSegregation = getActiveLogSegregation()
+
+func getActiveLogSegregation() bool {
+	value := os.Getenv("active_log_segregation")
+	if value == "true" {
+		return true
+	}
+
+	return false
+}
+
 func getRequestID() string {
 	if requestID == "" {
 		newRequestID, err := exec.Command("uuidgen").Output()
@@ -82,7 +93,7 @@ func getHost(date string) string {
 	return fmt.Sprintf("%s/%s-%s-%s/logs", host, index, elkBase.Environment, date)
 }
 
-func logger(level, message string, args interface{}) {
+func elkLogger(level, message string, args interface{}) {
 	now := time.Now().UTC()
 	index := elkIndex{
 		Timestamp: now.Format(time.RFC3339),
@@ -115,12 +126,29 @@ func logger(level, message string, args interface{}) {
 	}
 }
 
+func consoleLogger(level, message string, args interface{}) {
+
+	if args == nil {
+		log.Printf("INFO - %s ", message)
+	} else {
+		log.Printf("INFO - %s - %v ", message, args)
+	}
+}
+
 // Info sends to the elastic search the INFO type logs
 func Info(message string, args interface{}) {
-	go logger("INFO", message, args)
+	if activeLogSegregation == true {
+		go elkLogger("INFO", message, args)
+	} else {
+		go consoleLogger("ERROR", message, args)
+	}
 }
 
 // Error sends to the elastic search the ERROR type logs
 func Error(message string, args interface{}) {
-	go logger("ERROR", message, args)
+	if activeLogSegregation == true {
+		go elkLogger("ERROR", message, args)
+	} else {
+		go consoleLogger("ERROR", message, args)
+	}
 }
