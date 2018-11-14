@@ -5,3 +5,5 @@ azure.yml
 notes.txt
 .env
 .vscode
+.sonarlint
+debug
