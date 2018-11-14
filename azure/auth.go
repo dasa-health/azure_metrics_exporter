@@ -16,9 +16,9 @@ import (
 func GetAccessToken() (Client, error) {
 
 	ac := newAzureClient()
-	clientID := os.Getenv("client_id")
-	clientSecret := os.Getenv("client_secret")
-	tenantID := os.Getenv("tenant_id")
+	clientID := os.Getenv("clientId")
+	clientSecret := os.Getenv("clientSecret")
+	tenantID := os.Getenv("tenantId")
 
 	target := fmt.Sprintf("https://login.microsoftonline.com/%s/oauth2/token", tenantID)
 	form := url.Values{

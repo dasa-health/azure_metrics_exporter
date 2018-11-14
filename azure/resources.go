@@ -26,7 +26,7 @@ func (ac *Client) GetResources(tagValue string) (ResourceResponse, error) {
 		return ResourceResponse{}, fmt.Errorf("Error refreshing access token: %v", err)
 	}
 	apiVersion := "2018-05-01"
-	subscriptionID := os.Getenv("subscription_id")
+	subscriptionID := os.Getenv("subscriptionId")
 	metricValueEndpoint := fmt.Sprintf("%ssubscriptions/%s/resources", ac.resource, subscriptionID)
 
 	log.Print(metricValueEndpoint)
@@ -38,7 +38,7 @@ func (ac *Client) GetResources(tagValue string) (ResourceResponse, error) {
 	req.Header.Set("Authorization", "Bearer "+ac.accessToken)
 
 	values := url.Values{}
-	resourceQuery := fmt.Sprintf("tagName eq '%s' and tagValue eq '%s'", os.Getenv("resource_query_tag_name"), tagValue)
+	resourceQuery := fmt.Sprintf("tagName eq '%s' and tagValue eq '%s'", os.Getenv("resourceQueryTagName"), tagValue)
 	if resourceQuery != "" {
 		values.Add("$filter", resourceQuery)
 	}

@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	listenAddress = kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(":9276").String()
+	listenAddress = kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(":9277").String()
 )
 
 func init() {
@@ -38,7 +38,7 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect - collect results from Azure Montior API and create Prometheus metrics.
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
-	resourceAggregation := os.Getenv("metric_aggregation")
+	resourceAggregation := os.Getenv("metricAggregation")
 
 	if c.tagValue == "" {
 		logger.Error("Tag value is empty", nil)

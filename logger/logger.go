@@ -32,7 +32,7 @@ var elkBase = elk{}
 var activeLogSegregation = getActiveLogSegregation()
 
 func getActiveLogSegregation() bool {
-	value := os.Getenv("active_log_segregation")
+	value := os.Getenv("activeLogSegregation")
 	if value == "true" {
 		return true
 	}
@@ -80,12 +80,12 @@ func init() {
 
 func getHost(date string) string {
 
-	host := os.Getenv("elk_host")
+	host := os.Getenv("elkHost")
 
 	if host == "" || !strings.Contains(host, "http") {
 		host = "http://localhost:9200"
 	}
-	index := os.Getenv("elk_index")
+	index := os.Getenv("elkIndex")
 
 	if index == "" {
 		index = "logger"
