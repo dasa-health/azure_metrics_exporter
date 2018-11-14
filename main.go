@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	listenAddress = kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(":9288").String()
+	listenAddress = kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(":9276").String()
 )
 
 func init() {
