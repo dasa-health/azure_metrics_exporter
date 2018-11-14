@@ -7,11 +7,11 @@ import (
 )
 
 // CreateResourceLabels - Returns resource labels for a give resource ID.
-func CreateResourceLabels(resourceID, environment string) map[string]string {
+func CreateResourceLabels(resourceID, resourceName, resourceType, environment string) map[string]string {
 	labels := make(map[string]string)
 	labels["resource_group"] = strings.Split(resourceID, "/")[4]
-	labels["resource_type"] = strings.Split(resourceID, "/")[6]
-	labels["resource_name"] = strings.Split(resourceID, "/")[8]
+	labels["resource_type"] = resourceType
+	labels["resource_name"] = resourceName
 	labels["resource_environment"] = environment
 	return labels
 }

@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	listenAddress = kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(":9276").String()
+	listenAddress = kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(":9288").String()
 )
 
 func init() {
@@ -68,10 +68,10 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		typeMetrics, err := ac.GetMetricTypes(resource.ID, resource.Type)
 
 		if err != nil {
-			log.Printf("Failed to get metrics types from resources %s: %v", resource.Name, err)
+			logger.Error(fmt.Sprintf("Failed to get metrics types from resources %s: %v", resource.Name, err), nil)
 		}
 
-		log.Printf("Treats metric definitions found from resource [ %s ]", resource.Name)
+		logger.Info(fmt.Sprintf("Treats metric definitions found from resource [ %s ]", resource.Name), nil)
 
 		typeMetricsTreated := azure.TreatTypeMetric(typeMetrics)
 
@@ -80,16 +80,16 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			metricValueData, err := ac.GetMetric(resource.ID, typeMetric, resourceAggregation)
 
 			if err != nil {
-				log.Printf("Failed to get metrics for target %s: %v", resource.ID, err)
+				logger.Error(fmt.Sprintf("Failed to get metrics for target %s: %v", resource.ID, err), nil)
 				continue
 			}
 
 			if metricValueData.Value == nil {
-				log.Printf("Metric %v not found at target %v\n", typeMetric, resource.ID)
+				logger.Error(fmt.Sprintf("Metric %v not found at target %v\n", typeMetric, resource.ID), nil)
 				continue
 			}
 			if len(metricValueData.Value) <= 0 || len(metricValueData.Value[0].Timeseries) <= 0 || len(metricValueData.Value[0].Timeseries[0].Data) == 0 {
-				log.Printf("No metric data returned for metric %v at target %v\n", typeMetric, resource.ID)
+				logger.Error(fmt.Sprintf("No metric data returned for metric %v at target %v\n", typeMetric, resource.ID), nil)
 				continue
 			}
 			for _, value := range metricValueData.Value {
@@ -97,7 +97,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 				metricName, err := SanitizeMetricName(value.Name.Value, value.Unit)
 
 				if err != nil {
-					log.Printf("Failed to get metrics types from resources %s: %v", resource.Name, err)
+					logger.Error(fmt.Sprintf("Failed to get metrics types from resources %s: %v", resource.Name, err), nil)
 				}
 				defer recoverMetric(resource.Name, value.Name.Value)
 
@@ -107,7 +107,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 
 				metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
 
-				labels := CreateResourceLabels(value.ID, IdentifyEnvironmentResource(resource.Name))
+				labels := CreateResourceLabels(value.ID, resource.Name, resource.Type, IdentifyEnvironmentResource(resource.Name))
 
 				ch <- prometheus.MustNewConstMetric(
 					prometheus.NewDesc(metricName+"_total", metricName+"_total", nil, labels),
@@ -142,7 +142,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 
 func recoverMetric(resource, metric string) {
 	if r := recover(); r != nil {
-		log.Printf("Recovered error from metric %s from resource %s : %v", metric, resource, r)
+		logger.Info(fmt.Sprintf("Recovered error from metric %s from resource %s : %v", metric, resource, r), nil)
 		debug.PrintStack()
 	}
 }
