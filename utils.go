@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"regexp"
 	"strings"
 )
 
@@ -38,20 +36,4 @@ func IdentifyEnvironmentResource(resource string) string {
 	}
 
 	return "undefined"
-}
-
-// SanitizeMetricName ensure Azure metric names conform to Prometheus metric name conventions
-func SanitizeMetricName(name, unit string) (string, error) {
-
-	if name == "" || unit == "" {
-		return "", fmt.Errorf("Metric name or metric unit not found")
-	}
-
-	invalidMetricChars := regexp.MustCompile("[^a-zA-Z0-9_:]")
-
-	metricName := strings.Replace(name, " ", "_", -1)
-	metricName = strings.ToLower(metricName + "_" + unit)
-	metricName = strings.Replace(metricName, "/", "_per_", -1)
-	metricName = invalidMetricChars.ReplaceAllString(metricName, "_")
-	return metricName, nil
 }

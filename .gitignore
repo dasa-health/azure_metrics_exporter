@@ -6,4 +6,5 @@ notes.txt
 .env
 .vscode
 .sonarlint
+debug/
 debug

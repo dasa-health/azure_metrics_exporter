@@ -147,3 +147,28 @@ func TestValidateTypeMetricRealMetric(t *testing.T) {
 		}
 	}
 }
+
+func TestConvertMillisToSecondsValidScenarios(t *testing.T) {
+
+	type testConvertMillisToSeconds struct {
+		millis  float64
+		seconds float64
+	}
+	conditions := [6]testConvertMillisToSeconds{
+		{0, 0},
+		{1, 0.001},
+		{11, 0.011},
+		{145, 0.145},
+		{99999999, 99999.999},
+		{102939455, 102939.455},
+	}
+
+	for _, condition := range conditions {
+
+		dataReturn := convertMillisToSeconds(condition.millis)
+		if dataReturn != condition.seconds {
+			t.Error(errorMessageData, dataReturn, condition.seconds)
+		}
+	}
+
+}

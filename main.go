@@ -94,15 +94,16 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			}
 			for _, value := range metricValueData.Value {
 
-				metricName, err := SanitizeMetricName(value.Name.Value, value.Unit)
-
-				if err != nil {
-					logger.Error(fmt.Sprintf("Failed to get metrics types from resources %s: %v", resource.Name, err), nil)
-				}
 				defer recoverMetric(resource.Name, value.Name.Value)
 
 				if len(value.Timeseries) <= 0 || len(value.Timeseries[0].Data) <= 0 {
 					continue
+				}
+
+				err := value.SanitizeMetric()
+
+				if err != nil {
+					logger.Error(fmt.Sprintf("Failed to sanitize metrics %s: %v", resource.Name, err), nil)
 				}
 
 				metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
@@ -110,25 +111,25 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 				labels := CreateResourceLabels(value.ID, resource.Name, resource.Type, IdentifyEnvironmentResource(resource.Name))
 
 				ch <- prometheus.MustNewConstMetric(
-					prometheus.NewDesc(metricName+"_total", metricName+"_total", nil, labels),
+					prometheus.NewDesc(value.Name.Value+"_total", value.Name.Value+"_total", nil, labels),
 					prometheus.GaugeValue,
 					metricValue.Total,
 				)
 
 				ch <- prometheus.MustNewConstMetric(
-					prometheus.NewDesc(metricName+"_average", metricName+"_average", nil, labels),
+					prometheus.NewDesc(value.Name.Value+"_average", value.Name.Value+"_average", nil, labels),
 					prometheus.GaugeValue,
 					metricValue.Average,
 				)
 
 				ch <- prometheus.MustNewConstMetric(
-					prometheus.NewDesc(metricName+"_min", metricName+"_min", nil, labels),
+					prometheus.NewDesc(value.Name.Value+"_min", value.Name.Value+"_min", nil, labels),
 					prometheus.GaugeValue,
 					metricValue.Minimum,
 				)
 
 				ch <- prometheus.MustNewConstMetric(
-					prometheus.NewDesc(metricName+"_max", metricName+"_max", nil, labels),
+					prometheus.NewDesc(value.Name.Value+"_max", value.Name.Value+"_max", nil, labels),
 					prometheus.GaugeValue,
 					metricValue.Maximum,
 				)

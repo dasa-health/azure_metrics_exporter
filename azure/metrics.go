@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -178,4 +179,58 @@ func ValidateTypeMetric(metricType string) bool {
 	}
 
 	return true
+}
+
+// SanitizeMetric is the method responsible for performing all treatments in the metrics recovered in azure
+func (value *MetricValueResponseValue) SanitizeMetric() error {
+
+	metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
+
+	if value.Unit != "MilliSeconds" {
+		metricName, err := sanitizeMetricName(value.Name.Value, value.Unit)
+
+		if err != nil {
+			return err
+		}
+
+		value.Name.Value = metricName
+		return err
+	}
+
+	value.Unit = "seconds"
+	metricValue.Total = convertMillisToSeconds(metricValue.Total)
+	metricValue.Average = convertMillisToSeconds(metricValue.Average)
+	metricValue.Maximum = convertMillisToSeconds(metricValue.Maximum)
+	metricValue.Minimum = convertMillisToSeconds(metricValue.Minimum)
+
+	metricName, err := sanitizeMetricName(value.Name.Value, value.Unit)
+
+	if err != nil {
+		return err
+	}
+
+	value.Name.Value = metricName
+
+	return nil
+}
+
+// SanitizeMetricName ensure Azure metric names conform to Prometheus metric name conventions
+func sanitizeMetricName(name, unit string) (string, error) {
+
+	if name == "" || unit == "" {
+		return "", fmt.Errorf("Metric name or metric unit not found")
+	}
+
+	invalidMetricChars := regexp.MustCompile("[^a-zA-Z0-9_:]")
+
+	metricName := strings.Replace(name, " ", "_", -1)
+	metricName = strings.ToLower(metricName + "_" + unit)
+	metricName = strings.Replace(metricName, "/", "_per_", -1)
+	metricName = invalidMetricChars.ReplaceAllString(metricName, "_")
+	return metricName, nil
+}
+
+// convertMillisToSeconds convete milisegundos para segundos
+func convertMillisToSeconds(millis float64) float64 {
+	return millis / 1000
 }

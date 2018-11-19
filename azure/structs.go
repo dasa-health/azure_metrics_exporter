@@ -62,26 +62,29 @@ type metricDefinitionResponseName struct {
 
 // MetricValueResponse represents a metric value response for a given metric definition.
 type MetricValueResponse struct {
-	Value []struct {
-		Timeseries []struct {
-			Data []struct {
-				TimeStamp string  `json:"timeStamp"`
-				Total     float64 `json:"total"`
-				Average   float64 `json:"average"`
-				Minimum   float64 `json:"minimum"`
-				Maximum   float64 `json:"maximum"`
-			} `json:"data"`
-		} `json:"timeseries"`
-		ID   string `json:"id"`
-		Name struct {
-			LocalizedValue string `json:"localizedValue"`
-			Value          string `json:"value"`
-		} `json:"name"`
-		Type string `json:"type"`
-		Unit string `json:"unit"`
-	} `json:"value"`
+	Value    []MetricValueResponseValue `json:"value"`
 	APIError struct {
 		Code    string `json:"code"`
 		Message string `json:"message"`
 	} `json:"error"`
+}
+
+// MetricValueResponseValue represents a metric value detail response for a given metric definition.
+type MetricValueResponseValue struct {
+	Timeseries []struct {
+		Data []struct {
+			TimeStamp string  `json:"timeStamp"`
+			Total     float64 `json:"total"`
+			Average   float64 `json:"average"`
+			Minimum   float64 `json:"minimum"`
+			Maximum   float64 `json:"maximum"`
+		} `json:"data"`
+	} `json:"timeseries"`
+	ID   string `json:"id"`
+	Name struct {
+		LocalizedValue string `json:"localizedValue"`
+		Value          string `json:"value"`
+	} `json:"name"`
+	Type string `json:"type"`
+	Unit string `json:"unit"`
 }
