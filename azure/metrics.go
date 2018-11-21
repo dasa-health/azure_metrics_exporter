@@ -182,13 +182,13 @@ func ValidateTypeMetric(metricType string) bool {
 }
 
 // SanitizeMetric is the method responsible for performing all treatments in the metrics recovered in azure
-func (value *MetricValueResponseValue) SanitizeMetric() error {
+func (value *MetricValueResponseValue) SanitizeMetric(resourceType string) error {
 
 	metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
 
 	value.Unit = strings.ToLower(value.Unit)
 	if value.Unit != "milliseconds" {
-		metricName, err := sanitizeMetricName(value.Name.Value, value.Unit)
+		metricName, err := sanitizeMetricName(value.Name.Value, value.Unit, resourceType)
 
 		if err != nil {
 			return err
@@ -204,7 +204,7 @@ func (value *MetricValueResponseValue) SanitizeMetric() error {
 	metricValue.Maximum = convertMillisToSeconds(metricValue.Maximum)
 	metricValue.Minimum = convertMillisToSeconds(metricValue.Minimum)
 
-	metricName, err := sanitizeMetricName(value.Name.Value, value.Unit)
+	metricName, err := sanitizeMetricName(value.Name.Value, value.Unit, resourceType)
 
 	if err != nil {
 		return err
@@ -216,7 +216,7 @@ func (value *MetricValueResponseValue) SanitizeMetric() error {
 }
 
 // SanitizeMetricName ensure Azure metric names conform to Prometheus metric name conventions
-func sanitizeMetricName(name, unit string) (string, error) {
+func sanitizeMetricName(name, unit, resourceType string) (string, error) {
 
 	if name == "" || unit == "" {
 		return "", fmt.Errorf("Metric name or metric unit not found")
@@ -228,7 +228,9 @@ func sanitizeMetricName(name, unit string) (string, error) {
 		unit = "amount"
 	}
 
-	metricName := strings.Replace(name, " ", "_", -1)
+	metricName := "azure_" + strings.Replace(resourceType, ".", "_", -1)
+	metricName = strings.Replace(metricName, "/", "_", -1)
+	metricName = metricName + "_" + strings.Replace(name, " ", "_", -1)
 	metricName = strings.ToLower(metricName + "_" + unit)
 	metricName = strings.Replace(metricName, "/", "_per_", -1)
 	metricName = invalidMetricChars.ReplaceAllString(metricName, "_")

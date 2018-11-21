@@ -100,7 +100,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 					continue
 				}
 
-				err := value.SanitizeMetric()
+				err := value.SanitizeMetric(resource.Type)
 
 				if err != nil {
 					logger.Error(fmt.Sprintf("Failed to sanitize metrics %s: %v", resource.Name, err), nil)
