@@ -186,7 +186,8 @@ func (value *MetricValueResponseValue) SanitizeMetric() error {
 
 	metricValue := value.Timeseries[0].Data[len(value.Timeseries[0].Data)-1]
 
-	if value.Unit != "MilliSeconds" {
+	value.Unit = strings.ToLower(value.Unit)
+	if value.Unit != "milliseconds" {
 		metricName, err := sanitizeMetricName(value.Name.Value, value.Unit)
 
 		if err != nil {
@@ -223,10 +224,15 @@ func sanitizeMetricName(name, unit string) (string, error) {
 
 	invalidMetricChars := regexp.MustCompile("[^a-zA-Z0-9_:]")
 
+	if unit == "total" || unit == "count" {
+		unit = "amount"
+	}
+
 	metricName := strings.Replace(name, " ", "_", -1)
 	metricName = strings.ToLower(metricName + "_" + unit)
 	metricName = strings.Replace(metricName, "/", "_per_", -1)
 	metricName = invalidMetricChars.ReplaceAllString(metricName, "_")
+
 	return metricName, nil
 }
 

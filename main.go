@@ -111,13 +111,13 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 				labels := CreateResourceLabels(value.ID, resource.Name, resource.Type, IdentifyEnvironmentResource(resource.Name))
 
 				ch <- prometheus.MustNewConstMetric(
-					prometheus.NewDesc(value.Name.Value+"_total", value.Name.Value+"_total", nil, labels),
+					prometheus.NewDesc(value.Name.Value+"_tot", value.Name.Value+"_tot", nil, labels),
 					prometheus.GaugeValue,
 					metricValue.Total,
 				)
 
 				ch <- prometheus.MustNewConstMetric(
-					prometheus.NewDesc(value.Name.Value+"_average", value.Name.Value+"_average", nil, labels),
+					prometheus.NewDesc(value.Name.Value+"_avg", value.Name.Value+"_avg", nil, labels),
 					prometheus.GaugeValue,
 					metricValue.Average,
 				)
