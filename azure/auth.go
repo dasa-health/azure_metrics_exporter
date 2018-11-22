@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dasa-health/azure_metrics_exporter/logger"
+	"github.com/dasa-health/elk-logger"
 )
 
 // GetAccessToken autentica o exporter na azure

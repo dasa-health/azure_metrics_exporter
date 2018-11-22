@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dasa-health/azure_metrics_exporter/logger"
+	"github.com/dasa-health/elk-logger"
 )
 
 // GetMetricTypes Loop through all specified resource targets and get their respective metric definitions.

@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/dasa-health/azure_metrics_exporter/logger"
+	"github.com/dasa-health/elk-logger"
 )
 
 // GetResources get all resoures from azure
