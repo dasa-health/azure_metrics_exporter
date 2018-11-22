@@ -23,8 +23,6 @@ func TestIdentifyEnvironmentResourceValidScenarios(t *testing.T) {
 		{"resource-PROD", "prd"},
 		{"resource-prd", "prd"},
 		{"resource-PROD", "prd"},
-		// {"resource", "undefined"},
-		// {"", ""},
 	}
 
 	for _, condition := range conditions {
@@ -66,16 +64,17 @@ func TestCreateResourceLabelsValidScenarios(t *testing.T) {
 		name         string
 		resourceType string
 		environment  string
+		projectName  string
 	}
 
 	conditions := [2]testCreateResourceLabels{
-		{"resource/subscriptions/your_subscription/resourceGroups/YOUR_RSG/providers/Microsoft.Cache/Redis/my-redis-cache", "my-redis-cache", "Microsoft.Cache/Redis", "undefined"},
-		{"resource/subscriptions/your_subscription/resourceGroups/YOUR_RSG/providers/Microsoft.Web/sites/my-frontend/appServices", "my-frontend", "Microsoft.Web/sites", "dev"},
+		{"resource/subscriptions/your_subscription/resourceGroups/YOUR_RSG/providers/Microsoft.Cache/Redis/my-redis-cache", "my-redis-cache", "Microsoft.Cache/Redis", "undefined", "my-redis-cache"},
+		{"resource/subscriptions/your_subscription/resourceGroups/YOUR_RSG/providers/Microsoft.Web/sites/my-frontend/appServices", "my-frontend", "Microsoft.Web/sites", "dev", "my-frontend"},
 	}
 
 	for _, condition := range conditions {
 
-		dataReturn := CreateResourceLabels(condition.ID, condition.name, condition.resourceType, condition.environment)
+		dataReturn := CreateResourceLabels(condition.ID, condition.name, condition.resourceType, condition.environment, condition.projectName)
 
 		if dataReturn["resource_group"] == "" || dataReturn["resource_group"] != strings.Split(condition.ID, "/")[4] {
 			t.Error(errorMessageData, dataReturn["resource_group"], strings.Split(condition.ID, "/")[4])
@@ -91,6 +90,10 @@ func TestCreateResourceLabelsValidScenarios(t *testing.T) {
 
 		if dataReturn["resource_environment"] == "" || dataReturn["resource_environment"] != condition.environment {
 			t.Error(errorMessageData, dataReturn["resource_environment"], condition.environment)
+		}
+
+		if dataReturn["resource_project_name"] == "" || dataReturn["resource_project_name"] != condition.projectName {
+			t.Error(errorMessageData, dataReturn["resource_project_name"], condition.projectName)
 		}
 	}
 }
